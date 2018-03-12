@@ -18,6 +18,8 @@ function seedDB() {
 }
 
 module.exports.init = function init(callback) {
+  //  let app = express.init();
+  //  if (callback) callback(app, undefined, config);
   mongooseService.connect(function (db) {
     // Initialize Models
     mongooseService.loadModels(seedDB);

@@ -3,14 +3,13 @@ const crypto = require('crypto');
 module.exports.userPresave = async(req, res, next) => {
 	//  creamos variable pwd que será igual al password tecleado en la pagina
 
-	console.log('middleware called');
-	let pwd = req.body.password;
+	let pwd = req.body.password || req.body.newPassword;
 	if(!pwd) {
 		return res.status(422).send({ message: 'Error, password is obligatory' }); 
 	}
 
 	let password = this.hashPassword(pwd);
-	req.body.password = password;
+	req.body.password = req.body.hashedPassword = password;
 	next();
 };
 

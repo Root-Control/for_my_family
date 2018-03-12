@@ -9,8 +9,8 @@ var path = require('path'),
   passport = require('passport'),
   jwt = require('jsonwebtoken'),
   uuidv1 = require('uuid/v1'),
-  models = require('express-cassandra');
-  //  User = mongoose.model('User');
+  cassandra = require('express-cassandra'),
+  User = cassandra.instance.Users;
 
 // URLs for which user can't be redirected on signin
 var noReturnUrls = [
@@ -20,11 +20,17 @@ var noReturnUrls = [
 
 
 exports.signup = async(req, res) => {
-  let user = new models.instance.Users(req.body);
+  let user = new User(req.body);
   user.id = uuidv1();
   user.created = new Date();
   user.provider = 'local';
   user.displayName = user.firstName + ' ' + user.lastName;
+  user.isAdmin = parseInt(user.isAdmin, 10) || 0;
+  if(user.isAdmin) {
+    user.roles = JSON.stringify(['admin']);
+  } else {
+    user.roles = JSON.stringify(['user']);
+  }
 
   user.save(err => {
     if(err) return res.status(422).send({ message: errorHandler.getErrorMessage(err) }); 
@@ -35,8 +41,9 @@ exports.signup = async(req, res) => {
         if (err) {
           res.status(400).send(err);
         } else {
+          user.roles = JSON.parse(user.roles);
           let token = jwt.sign({ data: user }, process.env.SECRET_KEY, { expiresIn: '12h' });
-          res.json({ accessToken: token });
+          res.json({ accessToken: token, user: user });
         }
       });
     }
@@ -59,8 +66,9 @@ exports.signin = function (req, res, next) {
         if (err) {
           res.status(400).send(err);
         } else {
-          let token = jwt.sign({ data: user }, process.env.SECRET_KEY, { expiresIn: '1h' });
-          res.json({ accessToken: token });
+          user.roles = JSON.parse(user.roles);
+          let token = jwt.sign({ data: user }, process.env.SECRET_KEY, { expiresIn: '12h' });
+          res.json({ accessToken: token, user: user });
         }
       });
     }

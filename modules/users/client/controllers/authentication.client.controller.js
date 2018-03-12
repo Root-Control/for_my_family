@@ -82,9 +82,9 @@
     function onUserSigninSuccess(response) {
       //  If successful we assign the response to the global user model
 
-      //  vm.authentication.user = response.user;
+      vm.authentication.user = response.user;
       localStorage.accessToken = response.accessToken;
-      //  localStorage.user = JSON.stringify(response.user);
+      localStorage.user = JSON.stringify(response.user);
 
       Notification.info({ message: 'Bienvenido ' });
       // And redirect to the previous or home page

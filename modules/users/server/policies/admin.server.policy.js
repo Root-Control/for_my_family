@@ -1,5 +1,6 @@
 'use strict';
-var jwt = require('jsonwebtoken');
+let path = require('path'),
+  verifications = require(path.resolve('./modules/core/security/token-verification.server'));
 
 /**
  * Module dependencies
@@ -29,21 +30,14 @@ exports.invokeRolesPolicies = function () {
  * Check If Admin Policy Allows
  */
 exports.isAllowed = function (req, res, next) {
-  let authorization = req.headers.authorization || req.headers.Authorization;
-  let roles = '';
-  let decoded;
+  let verification = verifications.tokenPolicyVerification(req);
   let user;
-  if (authorization) {
-    try {
-      decoded = jwt.verify(authorization, process.env.SECRET_KEY);
-      user = decoded.data;
-      roles = user.roles;
-    } catch (e) {
-      return res.status(500).send('Token Expirado o inválido');
-    }
-  } else {
-    roles = ['guest'];
+  let roles;
+  if (!verification.success) {
+    return res.status(500).send({ message: 'Expired or invalid Token' });
   }
+  user = verification.data.user;
+  roles = verification.data.roles;
 
   // Check for user roles
   acl.areAnyRolesAllowed(roles, req.route.path, req.method.toLowerCase(), function (err, isAllowed) {

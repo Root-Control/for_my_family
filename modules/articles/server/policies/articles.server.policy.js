@@ -1,4 +1,6 @@
 'use strict';
+  var path = require('path'),
+    verifications = require(path.resolve('./modules/core/security/token-verification.server'));
 
 /**
  * Module dependencies
@@ -47,29 +49,15 @@ exports.invokeRolesPolicies = function () {
  * Check If Articles Policy Allows
  */
 exports.isAllowed = async (req, res, next) => {
-  let authorization = req.headers.authorization || req.headers.Authorization;
-
-  let roles = '';
-  let decoded;
+  let verification = verifications.tokenPolicyVerification(req);
   let user;
-  if (authorization) {
-    try {
-      decoded = jwt.verify(authorization.toString(), process.env.SECRET_KEY.toString());
-      user = decoded.data;
-      roles = user.roles;
-    } catch(e) {
-        switch(e.message) {
-          case 'jwt expired':
-            return res.status(401).send({ status: 'Unauthorized', message: e.message });
-            break;
-          case 'invalid signature':
-            return res.status(401).send({ status: 'Unauthorized', message: e.message });
-            break;
-        }
-    }
-  } else {
-    roles = ['guest'];
+  let roles;
+  if(!verification.success) {
+    return res.status(500).send({ message: 'Expired or invalid Token' }); 
   }
+  user = verification.data.user;
+  roles = verification.data.roles;
+  
   // If an article is being processed and the current user created it then allow any manipulation
   if (req.article && req.user && req.article.user && req.article.user.id === req.user.id) {
     return next();

@@ -6,10 +6,11 @@
 var path = require('path'),
   config = require(path.resolve('./config/config')),
   errorHandler = require(path.resolve('./modules/core/server/controllers/errors.server.controller')),
-  mongoose = require('mongoose'),
-  User = mongoose.model('User'),
   nodemailer = require('nodemailer'),
   async = require('async'),
+  cassandra = require('express-cassandra'),
+  User = cassandra.instance.Users,
+  authMiddleware = require(path.resolve('./modules/core/security/password-security.server')),
   crypto = require('crypto');
 
 var smtpTransport = nodemailer.createTransport(config.mailer.options);
@@ -19,7 +20,7 @@ var smtpTransport = nodemailer.createTransport(config.mailer.options);
  */
 exports.forgot = function (req, res, next) {
   async.waterfall([
-    // Generate random token
+    // Generate random token 
     function (done) {
       crypto.randomBytes(20, function (err, buffer) {
         var token = buffer.toString('hex');
@@ -28,16 +29,11 @@ exports.forgot = function (req, res, next) {
     },
     // Lookup user by username
     function (token, done) {
-      if (req.body.usernameOrEmail) {
+      if (req.body.email) {
 
-        var usernameOrEmail = String(req.body.usernameOrEmail).toLowerCase();
+        var email = String(req.body.email).toLowerCase();
 
-        User.findOne({
-          $or: [
-            { username: usernameOrEmail },
-            { email: usernameOrEmail }
-          ]
-        }, '-salt -password', function (err, user) {
+        User.findOne({ email: email }, { allow_filtering: true },  (err, user) => {
           if (err || !user) {
             return res.status(400).send({
               message: 'No account with that username or email has been found'
@@ -47,10 +43,12 @@ exports.forgot = function (req, res, next) {
               message: 'It seems like you signed up using your ' + user.provider + ' account, please sign in using that provider.'
             });
           } else {
-            user.resetPasswordToken = token;
-            user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+            let query =  {
+              resetPasswordToken: token,
+              resetPasswordExpires: Date.now() + 3600000 // 1 hour
+            };
 
-            user.save(function (err) {
+            User.update({ id: user.id }, query, (err) => {
               done(err, token, user);
             });
           }
@@ -62,7 +60,6 @@ exports.forgot = function (req, res, next) {
       }
     },
     function (token, user, done) {
-
       var httpTransport = 'http://';
       if (config.secure && config.secure.ssl === true) {
         httpTransport = 'https://';
@@ -90,6 +87,7 @@ exports.forgot = function (req, res, next) {
             message: 'An email has been sent to the provided email with further instructions.'
           });
         } else {
+          console.log(err);
           return res.status(400).send({
             message: 'Failure sending email'
           });
@@ -109,12 +107,7 @@ exports.forgot = function (req, res, next) {
  * Reset password GET from email token
  */
 exports.validateResetToken = function (req, res) {
-  User.findOne({
-    resetPasswordToken: req.params.token,
-    resetPasswordExpires: {
-      $gt: Date.now()
-    }
-  }, function (err, user) {
+  User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { $gt: Date.now() }}, { allow_filtering: true },  (err, user) => {
     if (err || !user) {
       return res.redirect('/password/reset/invalid');
     }
@@ -128,44 +121,33 @@ exports.validateResetToken = function (req, res) {
  */
 exports.reset = function (req, res, next) {
   // Init Variables
-  var passwordDetails = req.body;
-
+  let passwordDetails = req.body;
   async.waterfall([
 
     function (done) {
-      User.findOne({
-        resetPasswordToken: req.params.token,
-        resetPasswordExpires: {
-          $gt: Date.now()
-        }
-      }, function (err, user) {
+      User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { $gt: Date.now() }}, { allow_filtering: true },  (err, user) => {
         if (!err && user) {
           if (passwordDetails.newPassword === passwordDetails.verifyPassword) {
-            user.password = passwordDetails.newPassword;
-            user.resetPasswordToken = undefined;
-            user.resetPasswordExpires = undefined;
-
-            user.save(function (err) {
-              if (err) {
-                return res.status(422).send({
-                  message: errorHandler.getErrorMessage(err)
-                });
-              } else {
+            let query = {
+              password: passwordDetails.hashedPassword,
+              resetPasswordToken: null,
+              resetPasswordExpires: null
+            };
+            User.update({ id: user.id }, query, (err, result) => {
+              if(err) return res.status(422).send({ message: errorHandler.getErrorMessage(err) });
+              else {
                 req.login(user, function (err) {
                   if (err) {
                     res.status(400).send(err);
                   } else {
-                    // Remove sensitive data before return authenticated user
-                    user.password = undefined;
-                    user.salt = undefined;
-
-                    res.json(user);
-
-                    done(err, user);
+                    res.send({
+                      message: 'Password changed successfully'
+                    });
                   }
                 });
               }
             });
+
           } else {
             return res.status(422).send({
               message: 'Passwords do not match'
@@ -212,21 +194,17 @@ exports.reset = function (req, res, next) {
 exports.changePassword = function (req, res, next) {
   // Init Variables
   var passwordDetails = req.body;
-
   if (req.user) {
     if (passwordDetails.newPassword) {
-      User.findById(req.user.id, function (err, user) {
-        if (!err && user) {
-          if (user.authenticate(passwordDetails.currentPassword)) {
-            if (passwordDetails.newPassword === passwordDetails.verifyPassword) {
-              user.password = passwordDetails.newPassword;
-
-              user.save(function (err) {
-                if (err) {
-                  return res.status(422).send({
-                    message: errorHandler.getErrorMessage(err)
-                  });
-                } else {
+      User.findOne({ id: req.user.id }, async (err, user) => {
+        if(!err && user) {
+          let verified = await authMiddleware.authenticate(passwordDetails.currentPassword, user.password);
+          if(verified) {
+            if(passwordDetails.newPassword === passwordDetails.verifyPassword) {
+              console.log('saving password');
+              User.update({ id: user.id }, { password: passwordDetails.hashedPassword }, (err, result) => {
+                if(err) return res.status(422).send({ message: errorHandler.getErrorMessage(err) });
+                else {
                   req.login(user, function (err) {
                     if (err) {
                       res.status(400).send(err);
@@ -238,6 +216,7 @@ exports.changePassword = function (req, res, next) {
                   });
                 }
               });
+
             } else {
               res.status(422).send({
                 message: 'Passwords do not match'
@@ -246,14 +225,15 @@ exports.changePassword = function (req, res, next) {
           } else {
             res.status(422).send({
               message: 'Current password is incorrect'
-            });
+            });            
           }
         } else {
           res.status(400).send({
             message: 'User is not found'
-          });
+          });         
         }
       });
+
     } else {
       res.status(422).send({
         message: 'Please provide a new password'

@@ -48,7 +48,7 @@
     function onErrorItem(response) {
       vm.fileSelected = false;
       vm.progress = 0;
-
+      console.log(response);
       // Show error message
       Notification.error({ message: response.message, title: '<i class="glyphicon glyphicon-remove"></i> Failed to change profile picture' });
     }

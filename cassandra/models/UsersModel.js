@@ -21,6 +21,10 @@ module.exports = {
         required: true
       }
     },
+    profileImageURL: {
+      type: 'text',
+      default: '/modules/users/client/img/profile/default.png'
+    },
     username: {
       type: 'text',
       rule: {
@@ -44,6 +48,9 @@ module.exports = {
       type: 'int',
       default: 0,
     },
+    roles: {
+      type: 'text',
+    },
     token       : 'text',
     groupId     : 'text',
     type        : 'text',
@@ -52,8 +59,19 @@ module.exports = {
     validDDate  : 'timestamp',
     endDate     : 'timestamp',
     SharedPercentage : 'int',
-    created: 'timestamp',
-    provider: 'text'
+    created: {
+      type: 'timestamp',
+      default: new Date()
+    },
+    provider: 'text',
+    /* For reset password */
+    resetPasswordToken: {
+      type: 'text'
+    },
+    resetPasswordExpires: {
+      type: 'timestamp',
+      default: null
+    }
   },
   key:['id']
 };

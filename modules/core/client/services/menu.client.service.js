@@ -113,7 +113,7 @@
         if (!user) {
           return false;
         }
-
+        console.log(user);
         var matchingRoles = user.roles.filter(function (userRole) {
           return this.roles.indexOf(userRole) !== -1;
         }, this);

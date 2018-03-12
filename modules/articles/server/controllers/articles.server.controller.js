@@ -7,14 +7,15 @@ const path = require('path'),
   mongoose = require('mongoose'),
   translate = require('google-translate-api'),
   uuidv1 = require('uuid/v1'),
-  models = require('express-cassandra'),
+  cassandra = require('express-cassandra'),
+  Article = cassandra.instance.Articles,
   errorHandler = require(path.resolve('./modules/core/server/controllers/errors.server.controller'));
 
 /**
  * Create an article
  */
 exports.create = async (req, res) => {
-  let article = new models.instance.Articles(req.body);
+  let article = new Article(req.body);
   article._id = uuidv1();
   article.created = new Date();
   article.user = 'any user';
@@ -48,7 +49,7 @@ exports.read = function (req, res) {
 exports.update = async (req, res) => {
   let article = req.article;
 
-  models.instance.Articles.update({ _id: article._id }, req.body, (err, result) => {
+  Article.update({ _id: article._id }, req.body, (err, result) => {
     if(err) return res.status(422).send({ message: errorHandler.getErrorMessage(err) });
     else res.json(req.body);
   });
@@ -59,7 +60,7 @@ exports.update = async (req, res) => {
  */
 exports.delete = async (req, res) => {
   let article = req.article;
-  models.instance.Articles.delete({ _id: article._id }, (err, result) => {
+  Article.delete({ _id: article._id }, (err, result) => {
     console.log(result);
     if(err) return res.status(422).send({ message: errorHandler.getErrorMessage(err) });
     else res.json(article);
@@ -70,7 +71,7 @@ exports.delete = async (req, res) => {
  * List of Articles
  */
 exports.list = async (req, res) => {
-  models.instance.Articles.find({}, { allow_filtering: true }, (err, articles) => {
+  Article.find({}, { allow_filtering: true }, (err, articles) => {
       if(err) return res.status(422).send({ message: errorHandler.getErrorMessage(err) });
       else res.json(articles);
   });
@@ -80,7 +81,7 @@ exports.list = async (req, res) => {
  * Article middleware
  */
 exports.articleByID = async (req, res, next, id) => {
-  models.instance.Articles.findOne({ _id: id }, (err, article) => {
+  Article.findOne({ _id: id }, (err, article) => {
     if(!article) {
       return res.status(404).send({
         message: 'No article with that identifier has been found'

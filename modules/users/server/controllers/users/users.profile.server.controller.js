@@ -7,14 +7,13 @@ var _ = require('lodash'),
   fs = require('fs'),
   path = require('path'),
   errorHandler = require(path.resolve('./modules/core/server/controllers/errors.server.controller')),
-  mongoose = require('mongoose'),
   multer = require('multer'),
   multerS3 = require('multer-s3'),
   aws = require('aws-sdk'),
   amazonS3URI = require('amazon-s3-uri'),
   config = require(path.resolve('./config/config')),
-  User = mongoose.model('User'),
   jwt = require('jsonwebtoken'),
+  models = require('express-cassandra'),
   validator = require('validator');
 
 var whitelistedFields = ['firstName', 'lastName', 'email', 'username'];
@@ -45,20 +44,17 @@ exports.update = function (req, res) {
     user.updated = Date.now();
     user.displayName = user.firstName + ' ' + user.lastName;
 
-    user.save(function (err) {
-      if (err) {
-        return res.status(422).send({
-          message: errorHandler.getErrorMessage(err)
-        });
-      } else {
-        req.login(user, function (err) {
-          if (err) {
-            res.status(400).send(err);
-          } else {
-            res.json(user);
-          }
-        });
-      }
+    let data = {
+      username: user.username,
+      displayName: user.displayName,
+      lastName: user.lastName,
+      firstName: user.firstName,
+      email: user.email
+    };
+
+    models.instance.Users.update({ id: user.id }, data, (err, result) => {
+      if (err) return res.status(422).send({ message: errorHandler.getErrorMessage(err) });
+      else res.json({ success: true });
     });
   } else {
     res.status(401).send({
@@ -74,7 +70,6 @@ exports.changeProfilePicture = function (req, res) {
   var user = req.user;
   var existingImageUrl;
   var multerConfig;
-
 
   if (useS3Storage) {
     multerConfig = {
@@ -103,6 +98,7 @@ exports.changeProfilePicture = function (req, res) {
         res.json(user);
       })
       .catch(function (err) {
+        console.log(err);
         res.status(422).send(err);
       });
   } else {
@@ -128,19 +124,17 @@ exports.changeProfilePicture = function (req, res) {
       user.profileImageURL = config.uploads.storage === 's3' && config.aws.s3 ?
         req.file.location :
         '/' + req.file.path;
-      user.save(function (err, theuser) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
+
+      models.instance.Users.update({ id: user.id }, { profileImageURL: user.profileImageURL }, (err, result) => {
+        if (err) reject(err);
+        else resolve();
       });
     });
   }
 
   function deleteOldImage() {
     return new Promise(function (resolve, reject) {
-      if (existingImageUrl !== User.schema.path('profileImageURL').defaultValue) {
+      if (existingImageUrl !== '/modules/users/client/img/profile/default.png') {
         if (useS3Storage) {
           try {
             var { region, bucket, key } = amazonS3URI(existingImageUrl);
@@ -220,8 +214,6 @@ exports.me = function (req, res) {
       }
     }
   }
-
-
   // Sanitize the user - short term solution. Copied from core.server.controller.js
   // TODO create proper passport mock: See https://gist.github.com/mweibel/5219403
   var safeUserObject = null;

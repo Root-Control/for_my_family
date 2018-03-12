@@ -18,9 +18,9 @@ module.exports = function (app) {
 
   // Deserialize sessions
   passport.deserializeUser(function (id, done) {
-    models.instance.Users.findOne({ id: id }, function(err, user) {
-        //  done(err, user);
-        done(null, false);
+    models.instance.Users.findOne({ id: id }, function (err, user) {
+      //  done(err, user);
+      done(null, false);
     });
   });
 
