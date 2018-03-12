@@ -72,8 +72,8 @@ exports.delete = async (req, res) => {
  */
 exports.list = async (req, res) => {
   Article.find({}, { allow_filtering: true }, (err, articles) => {
-      if(err) return res.status(422).send({ message: errorHandler.getErrorMessage(err) });
-      else res.json(articles);
+    if(err) return res.status(422).send({ message: errorHandler.getErrorMessage(err) });
+    else res.json(articles);
   });
 };
 

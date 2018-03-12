@@ -114,6 +114,7 @@ module.exports.initViewEngine = function (app) {
  */
 module.exports.initSession = function (app, db) {
   // Express MongoDB session storage
+  //  Mongodb-Hiro Changes
   app.use(session({
     saveUninitialized: true,
     resave: true,
@@ -130,6 +131,7 @@ module.exports.initSession = function (app, db) {
       url: config.db.uri
     })
   }));
+
 
   // Add Lusca CSRF Middleware
   app.use(lusca(config.csrf));

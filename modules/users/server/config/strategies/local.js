@@ -7,9 +7,7 @@ var passport = require('passport'),
   path = require('path'),
   LocalStrategy = require('passport-local').Strategy,
   models = require('express-cassandra'),
-  authMiddleware = require(path.resolve('./modules/core/security/password-security.server')),
-  User = require('mongoose').model('User');
-
+  authMiddleware = require(path.resolve('./modules/core/security/password-security.server'));
 module.exports = function () {
   // Use local strategy
   passport.use(new LocalStrategy({

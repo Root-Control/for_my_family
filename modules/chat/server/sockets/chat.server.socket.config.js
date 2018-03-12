@@ -48,9 +48,9 @@ module.exports = async (io, socket) => {
   });
 
   // Send a chat messages to all connected sockets when a message is received
-  socket.on('chatChannel', async () => {
+  socket.on('chatChannel', async (message) => {
     // Emit the 'chatChannel' event
-    io.emit('chatChannel', 'a');
+    io.emit('chatChannel', message);
   });
 
   // Emit the status event when a socket client is disconnected

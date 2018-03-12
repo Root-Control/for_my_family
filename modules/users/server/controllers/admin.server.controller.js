@@ -3,9 +3,10 @@
 /**
  * Module dependencies
  */
-var path = require('path'),
+const path = require('path'),
   mongoose = require('mongoose'),
-  User = mongoose.model('User'),
+  cassandra = require('express-cassandra'),
+  User = cassandra.instance.Users,
   errorHandler = require(path.resolve('./modules/core/server/controllers/errors.server.controller'));
 
 /**
@@ -19,21 +20,24 @@ exports.read = function (req, res) {
  * Update a User
  */
 exports.update = function (req, res) {
-  var user = req.model;
-
+  let user = req.model;
+  let queryObject = { id: user.id };
   // For security purposes only merge these parameters
-  user.firstName = req.body.firstName;
-  user.lastName = req.body.lastName;
-  user.displayName = user.firstName + ' ' + user.lastName;
-  user.roles = req.body.roles;
+  let data = {
+    firstName: req.body.firstName,
+    lastName: req.body.lastName,
+    displayName: req.body.firstName + ' ' + req.body.lastName
+  };
 
-  user.save(function (err) {
-    if (err) {
-      return res.status(422).send({
-        message: errorHandler.getErrorMessage(err)
-      });
-    }
+  data.isAdmin = parseInt(req.body.isAdmin, 10) || 0;
+  if (data.isAdmin) {
+    data.roles = JSON.stringify(['admin']);
+  } else {
+    data.roles = JSON.stringify(['user']);
+  }
 
+  User.update(queryObject, data, err => {
+    if (err) return res.status(422).send({ message: errorHandler.getErrorMessage(err) });
     res.json(user);
   });
 };
@@ -42,15 +46,10 @@ exports.update = function (req, res) {
  * Delete a user
  */
 exports.delete = function (req, res) {
-  var user = req.model;
+  let user = req.model;
 
-  user.remove(function (err) {
-    if (err) {
-      return res.status(422).send({
-        message: errorHandler.getErrorMessage(err)
-      });
-    }
-
+  user.delete(err => {
+    if (err) return res.status(422).send({ message: errorHandler.getErrorMessage(err) });
     res.json(user);
   });
 };
@@ -59,14 +58,10 @@ exports.delete = function (req, res) {
  * List of Users
  */
 exports.list = function (req, res) {
-  User.find({}, '-salt -password -providerData').sort('-created').populate('user', 'displayName').exec(function (err, users) {
-    if (err) {
-      return res.status(422).send({
-        message: errorHandler.getErrorMessage(err)
-      });
-    }
-
-    res.json(users);
+  User.find({}, { allow_filtering: true, raw: true }, (err, users) => {
+    console.log(users);
+    if (err) return res.status(422).send({ message: errorHandler.getErrorMessage(err) });
+    else res.json(users);
   });
 };
 
@@ -74,19 +69,8 @@ exports.list = function (req, res) {
  * User middleware
  */
 exports.userByID = function (req, res, next, id) {
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).send({
-      message: 'User is invalid'
-    });
-  }
-
-  User.findById(id, '-salt -password -providerData').exec(function (err, user) {
-    if (err) {
-      return next(err);
-    } else if (!user) {
-      return next(new Error('Failed to load user ' + id));
-    }
-
+  User.findOne({ id: id }, (err, user) => {
+    if (!user) return res.status(404).send({ message: 'No user with that identifier has been found' });
     req.model = user;
     next();
   });
