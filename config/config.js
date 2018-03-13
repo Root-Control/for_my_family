@@ -1,5 +1,5 @@
 'use strict';
-
+require('rootpath')();
 /**
  * Module dependencies.
  */
@@ -10,7 +10,7 @@ var _ = require('lodash'),
   path = require('path'),
   cassandra = require('express-cassandra');
 
-cassandra.setDirectory(__dirname + '../../cassandra/models').bind(
+cassandra.setDirectory('cassandra/models').bind(
   {
     clientOptions: {
       contactPoints: [process.env.CONTACT_POINTS],
