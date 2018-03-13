@@ -9,6 +9,7 @@ module.exports = function (app) {
   // User Routes
   var users = require('../controllers/users.server.controller'),
     path = require('path'),
+    verifier = require(path.resolve('./modules/users/server/verifiers/users.verification.server')),
     authMiddleware = require(path.resolve('./modules/core/security/password-security.server'));
 
   // Setting up the users password api
@@ -21,7 +22,7 @@ module.exports = function (app) {
   // Setting up the users authentication api
   //  app.route('/api/auth/signin').post(authMiddleware.authenticate, users.signin);
 
-  app.route('/api/auth/signup').post(authMiddleware.userPresave, users.signup);
+  app.route('/api/auth/signup').post(verifier.emailExistenceVerification, verifier.verifyPairInvitation, authMiddleware.userPresave, users.signup);
   app.route('/api/auth/signin').post(users.signin);
   app.route('/api/auth/signout').get(users.signout);
 

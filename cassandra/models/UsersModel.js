@@ -2,7 +2,10 @@ const validator = require('validator');
 
 module.exports = {
   fields: {
-    id: 'text',
+    id: {
+      type: "uuid",
+      default: {"$db_function": "uuid()"}
+    },
     firstName: {
       type: 'text',
       rule: {
@@ -15,10 +18,13 @@ module.exports = {
         required: true
       }
     },
+    gender: {
+      type: 'text'
+    },
     displayName: {
       type: 'text',
-      rule: {
-        required: true
+      default: function() {
+        return this.firstName + ' ' + this.lastName;
       }
     },
     profileImageURL: {
@@ -49,14 +55,14 @@ module.exports = {
       default: 0,
     },
     roles: {
-      type: 'text',
+      type: 'text'
     },
     token       : 'text',
     groupId     : 'text',
     type        : 'text',
     color       : 'text',
     date        : 'timestamp',
-    validDDate  : 'timestamp',
+    validDate  : 'timestamp',
     endDate     : 'timestamp',
     SharedPercentage : 'int',
     created: {
@@ -73,5 +79,5 @@ module.exports = {
       default: null
     }
   },
-  key:['id']
+  key:['id', 'email']
 };

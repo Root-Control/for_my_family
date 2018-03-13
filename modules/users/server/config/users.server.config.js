@@ -13,7 +13,7 @@ var passport = require('passport'),
  */
 module.exports = function (app) {
   passport.serializeUser(function (user, done) {
-    done(null, user.id);
+    done(null, user);
   });
 
   // Deserialize sessions

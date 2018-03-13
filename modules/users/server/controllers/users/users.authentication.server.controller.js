@@ -20,23 +20,24 @@ var noReturnUrls = [
 
 
 exports.signup = async(req, res) => {
+  //  Calling pair setted on middleware
+  if(req.body.pair) console.log('Your partner pair id is ' + req.body.pair);
+  
   let user = new User(req.body);
-  user.id = uuidv1();
+  //user.id = uuidv1();
   user.created = new Date();
   user.provider = 'local';
-  user.displayName = user.firstName + ' ' + user.lastName;
   user.isAdmin = parseInt(user.isAdmin, 10) || 0;
+
   if(user.isAdmin) {
     user.roles = JSON.stringify(['admin']);
   } else {
     user.roles = JSON.stringify(['user']);
   }
-
-  user.save(err => {
-    if(err) return res.status(422).send({ message: errorHandler.getErrorMessage(err) }); 
+  user.save((err, result) => {
+    if(err) return res.status(422).send({ message: errorHandler.getErrorMessage(err) });
     else {
       user.password = undefined;
-
       req.login(user, function (err) {
         if (err) {
           res.status(400).send(err);
