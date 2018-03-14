@@ -1,12 +1,17 @@
 'use strict';
-
+const path = require('path'),
+  cassandra = require(path.resolve('./cassandra/connection'));
 /**
  * Module dependencies.
  */
-process.on('unhandledRejection', (reason, promise) => {
-  console.log('Reason: ' + reason);
-  console.log(promise);
-});
+(async() => {
+  await cassandra.runCassandra();
 
-var app = require('./config/lib/app');
-var server = app.start();
+  process.on('unhandledRejection', (reason, promise) => {
+    console.log('Reason: ' + reason);
+    console.log(promise);
+  });
+
+  const app = require('./config/lib/app');
+  const server = app.start();
+})();

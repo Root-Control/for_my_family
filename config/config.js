@@ -1,5 +1,4 @@
 'use strict';
-require('rootpath')();
 /**
  * Module dependencies.
  */
@@ -7,38 +6,7 @@ var _ = require('lodash'),
   chalk = require('chalk'),
   glob = require('glob'),
   fs = require('fs'),
-  path = require('path'),
-  cassandra = require('express-cassandra');
-
-cassandra.setDirectory('cassandra/models').bind(
-  {
-    clientOptions: {
-      contactPoints: [process.env.CONTACT_POINTS],
-      protocolOptions: { port: process.env.DB_PORT },
-      keyspace: process.env.KEYSPACE,
-      queryOptions: { consistency: cassandra.consistencies.one }
-    },
-    ormOptions: {
-      defaultReplicationStrategy: {
-        class: process.env.STRATEGY,
-        replication_factor: process.env.REP_FACTOR
-      },
-      migration: 'safe'
-    }
-  },
-    err => {
-      if (err) {
-        console.log(err);
-        throw err;
-      } else {
-        console.log(chalk.yellow('Cassandra tables migrated!'));
-      }
-
-    // You'll now have a `person` table in cassandra created against the model
-    // schema you've defined earlier and you can now access the model instance
-    // in `models.instance.Person` object containing supported orm operations.
-    }
-);
+  path = require('path');
 
 
 /**

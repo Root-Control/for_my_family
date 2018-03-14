@@ -22,7 +22,7 @@ var noReturnUrls = [
 exports.signup = async(req, res) => {
   //  Calling pair setted on middleware
   if(req.body.pair) console.log('Your partner pair id is ' + req.body.pair);
-  
+
   let user = new User(req.body);
   //user.id = uuidv1();
   user.created = new Date();

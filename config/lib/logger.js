@@ -5,7 +5,6 @@ var _ = require('lodash'),
   chalk = require('chalk'),
   fs = require('fs'),
   winston = require('winston');
-
 // list of valid formats for the logging
 var validFormats = ['combined', 'common', 'dev', 'short', 'tiny'];
 
